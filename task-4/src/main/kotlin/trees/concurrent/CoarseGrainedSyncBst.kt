@@ -2,14 +2,10 @@ package trees.concurrent
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import trees.Bst
-import trees.BstEdge
-import trees.Edge
-import trees.Vertex
 
-class CoarseGrainedSyncBst<K : Comparable<K>, V, E : Edge<K, V, E>>(
+abstract class CoarseGrainedSyncBstImpl<K : Comparable<K>, V, E : Edge<K, V, E>>(
     newEdge: (Vertex<K, V, E>?) -> E
-) : Bst<K, V, E>(newEdge) {
+) : BstImpl<K, V, E>(newEdge) {
     private val mutex = Mutex()
 
     override suspend fun put(key: K, value: V): V? {
@@ -31,5 +27,10 @@ class CoarseGrainedSyncBst<K : Comparable<K>, V, E : Edge<K, V, E>>(
     }
 }
 
-fun <K : Comparable<K>, V> coarseGrainedSyncBst() =
-    CoarseGrainedSyncBst<K, V, BstEdge<K, V>> { vertex -> BstEdge(vertex) }
+class BstEdge<K, V>(
+    vertex: Vertex<K, V, BstEdge<K, V>>?
+) : Edge<K, V, BstEdge<K, V>>(vertex)
+
+class CoarseGrainedSyncBst<K : Comparable<K>, V> : CoarseGrainedSyncBstImpl<K, V, BstEdge<K, V>>(
+    { vertex -> BstEdge(vertex) }
+)

@@ -1,8 +1,16 @@
-package trees
+package trees.concurrent
 
-open class Bst<K : Comparable<K>, V, E : Edge<K, V, E>>(
+interface ConcurrentBst<K : Comparable<K>, V> {
+    suspend fun put(key: K, value: V): V?
+
+    suspend fun remove(key: K): V?
+
+    suspend fun get(key: K): V?
+}
+
+abstract class BstImpl<K : Comparable<K>, V, E : Edge<K, V, E>>(
     protected val newEdge: (Vertex<K, V, E>?) -> E
-) {
+) : ConcurrentBst<K, V> {
     protected val rootEdge = newEdge(null)
 
     protected fun newVertex(key: K, value: V, leftEdge: E = newEdge(null), rightEdge: E = newEdge(null)) =
@@ -24,7 +32,7 @@ open class Bst<K : Comparable<K>, V, E : Edge<K, V, E>>(
         return edge
     }
 
-    open suspend fun put(key: K, value: V): V? {
+    override suspend fun put(key: K, value: V): V? {
         val edge = getEdgeToVertexWithKey(key)
 
         edge.vertex?.let { vertex ->
@@ -35,7 +43,7 @@ open class Bst<K : Comparable<K>, V, E : Edge<K, V, E>>(
         }
     }
 
-    protected fun getRightLeftEdge(startEdge: E): E {
+    protected fun getLeftEdge(startEdge: E): E {
         var edge = startEdge
         var vertex = edge.vertex
 
@@ -47,7 +55,7 @@ open class Bst<K : Comparable<K>, V, E : Edge<K, V, E>>(
         return edge
     }
 
-    open suspend fun remove(key: K): V? {
+    override suspend fun remove(key: K): V? {
         val edge = getEdgeToVertexWithKey(key)
 
         return edge.vertex?.let { vertex ->
@@ -55,7 +63,7 @@ open class Bst<K : Comparable<K>, V, E : Edge<K, V, E>>(
                 vertex.leftEdge.vertex?.let { left ->
                     vertex.rightEdge.vertex?.let { right ->
                         edge.vertex = right
-                        val rightLeftEdge = getRightLeftEdge(right.leftEdge)
+                        val rightLeftEdge = getLeftEdge(right.leftEdge)
                         rightLeftEdge.vertex = left
                     } ?: run {
                         edge.vertex = left
@@ -67,7 +75,7 @@ open class Bst<K : Comparable<K>, V, E : Edge<K, V, E>>(
         }
     }
 
-    open suspend fun get(key: K) = getEdgeToVertexWithKey(key).vertex?.value
+    override suspend fun get(key: K) = getEdgeToVertexWithKey(key).vertex?.value
 }
 
 class Vertex<K, V, E : Edge<K, V, E>>(
@@ -77,9 +85,3 @@ class Vertex<K, V, E : Edge<K, V, E>>(
 open class Edge<K, V, E : Edge<K, V, E>>(
     var vertex: Vertex<K, V, E>?
 )
-
-class BstEdge<K, V>(
-    vertex: Vertex<K, V, BstEdge<K, V>>?
-) : Edge<K, V, BstEdge<K, V>>(vertex)
-
-fun <K : Comparable<K>, V> bst() = Bst<K, V, BstEdge<K, V>> { vertex -> BstEdge(vertex) }

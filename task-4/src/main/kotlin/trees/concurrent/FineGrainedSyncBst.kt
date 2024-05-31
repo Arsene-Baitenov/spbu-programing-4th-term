@@ -1,13 +1,10 @@
 package trees.concurrent
 
 import kotlinx.coroutines.sync.Mutex
-import trees.Bst
-import trees.Edge
-import trees.Vertex
 
-open class FineGrainedSyncBst<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
+abstract class FineGrainedSyncBstImpl<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
     newEdge: (Vertex<K, V, E>?) -> E
-) : Bst<K, V, E>(newEdge) {
+) : BstImpl<K, V, E>(newEdge) {
     protected open suspend fun getMutexedEdgeToVertexWithKey(key: K): E {
         var edge = rootEdge
         edge.mutex.lock()
@@ -43,7 +40,7 @@ open class FineGrainedSyncBst<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
         }
     }
 
-    protected open suspend fun getRightLeftMutexedEdge(startEdge: E): E {
+    protected open suspend fun getLeftMutexedEdge(startEdge: E): E {
         var edge = startEdge
         edge.mutex.lock()
         var vertex = edge.vertex
@@ -71,9 +68,9 @@ open class FineGrainedSyncBst<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
                         vertex.leftEdge.vertex?.let { left ->
                             vertex.rightEdge.vertex?.let { right ->
                                 edge.vertex = right
-                                val rightLeftEdge = getRightLeftMutexedEdge(right.leftEdge)
+                                val rightLeftEdge = getLeftMutexedEdge(right.leftEdge)
                                 try {
-                                    rightLeftEdge.vertex = vertex
+                                    rightLeftEdge.vertex = left
                                 } finally {
                                     rightLeftEdge.mutex.unlock()
                                 }
@@ -84,7 +81,7 @@ open class FineGrainedSyncBst<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
                             edge.vertex = vertex.rightEdge.vertex
                         }
                     } finally {
-                        vertex.rightEdge.mutex.lock()
+                        vertex.rightEdge.mutex.unlock()
                         vertex.leftEdge.mutex.unlock()
                     }
                 }
@@ -116,5 +113,6 @@ class BstEdgeWithMutex<K, V>(
     vertex: Vertex<K, V, BstEdgeWithMutex<K, V>>?
 ) : EdgeWithMutex<K, V, BstEdgeWithMutex<K, V>>(vertex)
 
-fun <K : Comparable<K>, V> fineGrainedSyncBst() =
-    FineGrainedSyncBst<K, V, BstEdgeWithMutex<K, V>> { vertex -> BstEdgeWithMutex(vertex) }
+class FineGrainedSyncBst<K : Comparable<K>, V> : FineGrainedSyncBstImpl<K, V, BstEdgeWithMutex<K, V>>(
+    { vertex -> BstEdgeWithMutex(vertex) }
+)

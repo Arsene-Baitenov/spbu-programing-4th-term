@@ -1,10 +1,8 @@
 package trees.concurrent
 
-import trees.Vertex
-
-open class OptimisticSyncBst<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
+abstract class OptimisticSyncBstImpl<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
     newEdge: (Vertex<K, V, E>?) -> E
-) : FineGrainedSyncBst<K, V, E>(newEdge) {
+) : FineGrainedSyncBstImpl<K, V, E>(newEdge) {
     private fun validate(key: K, target: E): Boolean {
         val edge = getEdgeToVertexWithKey(key)
 
@@ -24,18 +22,18 @@ open class OptimisticSyncBst<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
         }
     }
 
-    private fun validateRightLeft(startEdge: E, target: E): Boolean {
-        val edge = getRightLeftEdge(startEdge)
+    private fun validateLeft(startEdge: E, target: E): Boolean {
+        val edge = getLeftEdge(startEdge)
 
         return edge === target
     }
 
-    override suspend fun getRightLeftMutexedEdge(startEdge: E): E {
+    override suspend fun getLeftMutexedEdge(startEdge: E): E {
         while (true) {
-            val edge = getRightLeftEdge(startEdge)
+            val edge = getLeftEdge(startEdge)
 
             edge.mutex.lock()
-            if (validateRightLeft(startEdge, edge)) {
+            if (validateLeft(startEdge, edge)) {
                 return edge
             } else {
                 edge.mutex.unlock()
@@ -44,6 +42,6 @@ open class OptimisticSyncBst<K : Comparable<K>, V, E : EdgeWithMutex<K, V, E>>(
     }
 }
 
-
-fun <K : Comparable<K>, V> optimisticSyncBst() =
-    OptimisticSyncBst<K, V, BstEdgeWithMutex<K, V>> { vertex -> BstEdgeWithMutex(vertex) }
+class OptimisticSyncBst<K : Comparable<K>, V> : OptimisticSyncBstImpl<K, V, BstEdgeWithMutex<K, V>>(
+    { vertex -> BstEdgeWithMutex(vertex) }
+)
