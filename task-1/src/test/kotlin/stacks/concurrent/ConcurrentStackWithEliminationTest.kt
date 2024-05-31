@@ -1,0 +1,3 @@
+package stacks.concurrent
+
+class ConcurrentStackWithEliminationTest : ConcurrentStackTest(ConcurrentStackWithElimination())
